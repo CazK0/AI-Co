@@ -1,6 +1,7 @@
 import tkinter as tk
 import ctypes
 from audio import AudioRecorder
+from screenshot import ScreenCapturer
 
 
 class CopilotApp:
@@ -11,6 +12,7 @@ class CopilotApp:
         self.root.attributes("-topmost", True)
 
         self.recorder = AudioRecorder()
+        self.capturer = ScreenCapturer()
 
         self.set_stealth_mode()
         self.create_widgets()
@@ -35,6 +37,9 @@ class CopilotApp:
         self.stop_btn = tk.Button(self.btn_frame, text="Stop Recording", command=self.stop_audio, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
 
+        self.screen_btn = tk.Button(self.btn_frame, text="Screenshot", command=self.take_screenshot)
+        self.screen_btn.pack(side=tk.LEFT, padx=5)
+
     def log(self, message):
         self.text_area.config(state=tk.NORMAL)
         self.text_area.insert(tk.END, f"{message}\n")
@@ -52,6 +57,10 @@ class CopilotApp:
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
         self.log("Audio saved to output.wav")
+
+    def take_screenshot(self):
+        filename = self.capturer.capture()
+        self.log(f"Screenshot saved to {filename}")
 
 
 def main():
