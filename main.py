@@ -1,7 +1,9 @@
 import tkinter as tk
 import ctypes
+import threading
 from audio import AudioRecorder
 from screenshot import ScreenCapturer
+from ai_engine import AIEngine
 
 
 class CopilotApp:
@@ -13,6 +15,7 @@ class CopilotApp:
 
         self.recorder = AudioRecorder()
         self.capturer = ScreenCapturer()
+        self.ai = AIEngine()
 
         self.set_stealth_mode()
         self.create_widgets()
@@ -34,15 +37,18 @@ class CopilotApp:
         self.start_btn = tk.Button(self.btn_frame, text="Start Recording", command=self.start_audio)
         self.start_btn.pack(side=tk.LEFT, padx=5)
 
-        self.stop_btn = tk.Button(self.btn_frame, text="Stop Recording", command=self.stop_audio, state=tk.DISABLED)
+        self.stop_btn = tk.Button(self.btn_frame, text="Stop", command=self.stop_audio, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
 
         self.screen_btn = tk.Button(self.btn_frame, text="Screenshot", command=self.take_screenshot)
         self.screen_btn.pack(side=tk.LEFT, padx=5)
 
+        self.transcribe_btn = tk.Button(self.btn_frame, text="Transcribe", command=self.process_transcription)
+        self.transcribe_btn.pack(side=tk.LEFT, padx=5)
+
     def log(self, message):
         self.text_area.config(state=tk.NORMAL)
-        self.text_area.insert(tk.END, f"{message}\n")
+        self.text_area.insert(tk.END, f"{message}\n\n")
         self.text_area.config(state=tk.DISABLED)
         self.text_area.see(tk.END)
 
@@ -61,6 +67,19 @@ class CopilotApp:
     def take_screenshot(self):
         filename = self.capturer.capture()
         self.log(f"Screenshot saved to {filename}")
+
+    def process_transcription(self):
+        self.transcribe_btn.config(state=tk.DISABLED)
+        self.log("Sending audio to Whisper API...")
+        threading.Thread(target=self._run_transcription, daemon=True).start()
+
+    def _run_transcription(self):
+        result = self.ai.transcribe_audio("output.wav")
+        self.root.after(0, self._transcription_done, result)
+
+    def _transcription_done(self, result):
+        self.log(f"Interviewer: {result}")
+        self.transcribe_btn.config(state=tk.NORMAL)
 
 
 def main():
