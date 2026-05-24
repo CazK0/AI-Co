@@ -1,6 +1,7 @@
 import tkinter as tk
 import ctypes
 import threading
+import keyboard
 from audio import AudioRecorder
 from screenshot import ScreenCapturer
 from ai_engine import AIEngine
@@ -19,6 +20,7 @@ class CopilotApp:
 
         self.set_stealth_mode()
         self.create_widgets()
+        self.setup_hotkeys()
 
     def set_stealth_mode(self):
         self.root.update_idletasks()
@@ -28,7 +30,8 @@ class CopilotApp:
     def create_widgets(self):
         self.text_area = tk.Text(self.root, wrap=tk.WORD, font=("Arial", 12))
         self.text_area.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
-        self.text_area.insert(tk.END, "System ready...\n")
+        self.text_area.insert(tk.END,
+                              "System ready...\nHotkeys Active:\nCtrl+Alt+R : Toggle Audio\nCtrl+Alt+S : Analyze Screen\n\n")
         self.text_area.config(state=tk.DISABLED)
 
         self.btn_frame = tk.Frame(self.root)
@@ -46,6 +49,23 @@ class CopilotApp:
         self.transcribe_btn = tk.Button(self.btn_frame, text="Transcribe", command=self.process_transcription)
         self.transcribe_btn.pack(side=tk.LEFT, padx=5)
 
+        self.analyze_btn = tk.Button(self.btn_frame, text="Analyze Screen", command=self.process_vision)
+        self.analyze_btn.pack(side=tk.LEFT, padx=5)
+
+    def setup_hotkeys(self):
+        keyboard.add_hotkey('ctrl+alt+r', self.toggle_audio_from_hotkey)
+        keyboard.add_hotkey('ctrl+alt+s', self.trigger_vision_from_hotkey)
+
+    def toggle_audio_from_hotkey(self):
+        if not self.recorder.recording:
+            self.root.after(0, self.start_audio)
+        else:
+            self.root.after(0, self.stop_audio)
+            self.root.after(500, self.process_transcription)
+
+    def trigger_vision_from_hotkey(self):
+        self.root.after(0, self.process_vision)
+
     def log(self, message):
         self.text_area.config(state=tk.NORMAL)
         self.text_area.insert(tk.END, f"{message}\n\n")
@@ -62,11 +82,12 @@ class CopilotApp:
         self.recorder.stop_recording()
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
-        self.log("Audio saved to output.wav")
+        self.log("Audio saved.")
 
     def take_screenshot(self):
         filename = self.capturer.capture()
-        self.log(f"Screenshot saved to {filename}")
+        self.log("Screenshot captured.")
+        return filename
 
     def process_transcription(self):
         self.transcribe_btn.config(state=tk.DISABLED)
@@ -80,6 +101,20 @@ class CopilotApp:
     def _transcription_done(self, result):
         self.log(f"Interviewer: {result}")
         self.transcribe_btn.config(state=tk.NORMAL)
+
+    def process_vision(self):
+        self.analyze_btn.config(state=tk.DISABLED)
+        filename = self.take_screenshot()
+        self.log("Sending screenshot to GPT-4o Vision...")
+        threading.Thread(target=self._run_vision, args=(filename,), daemon=True).start()
+
+    def _run_vision(self, filename):
+        result = self.ai.analyze_screen(filename)
+        self.root.after(0, self._vision_done, result)
+
+    def _vision_done(self, result):
+        self.log(f"AI Assistant: {result}")
+        self.analyze_btn.config(state=tk.NORMAL)
 
 
 def main():
